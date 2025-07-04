@@ -35,4 +35,3 @@ def interpolate(pts, vals, latitudes, longitudes, interpolation_factor=10):
 
     return lon_i_m, lat_i_m, grid
 
-

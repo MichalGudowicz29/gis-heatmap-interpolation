@@ -1,8 +1,7 @@
 from map_functions import plot_heatmap, plot_points, generate_points, summary
 from math_functions import interpolate
-#from mcda_functions import generate_score
-
-spotis_base = [0.6936776754264022, 0.7719932826061364, 0.9778282855803174, 0.9739092011873418, 0.9157385069914372, 0.9013948644718774, 0.9394849577223181, 0.9736070675352918, 0.9786444534777134, 0.9778282855803174, 0.5907610430451512, 0.560170588322783, 0.7368191616156228, 0.8800900990321752, 0.9087891882915052, 0.8866086234407943, 0.909531427545478, 0.960382973019978, 0.9724411133961546, 0.9786444534777134, 0.8745913713702399, 0.8535958305261986, 0.7913044436475513, 0.6399584258455691, 0.7325965437834694, 0.8783644739636554, 0.8961646556073541, 0.9326473456395167, 0.9487460546193655, 0.9798104076168507, 0.8096438773097544, 0.9536587479916003, 0.979012281727793, 0.9829110162489931, 0.9452969512597356, 0.6972463649513925, 0.6278254033619666, 0.8237824192315412, 0.8973166149169153, 0.8389402416807255, 0.5408203340229315, 0.7136226877985965, 0.7305142776133818, 0.774661866307889, 0.6684552760232786, 0.5907696840954965, 0.5208021893040461, 0.5704755888870022, 0.5773623685430479, 0.4556594217713643, 0.5809193290424635, 0.6537154892390946, 0.6129836771636229, 0.6187071019928266, 0.6614290942126856, 0.5632700819646881, 0.46266920809147616, 0.5109534559598856, 0.31739953714659513, 0.2763539249444628, 0.790469543872272, 0.8252300662162402, 0.6818743913554921, 0.8017803635395844, 0.932100729428847, 0.884451326374708, 0.8177855684008504, 0.6615665322164387, 0.4306927451688585, 0.3525857207530253, 0.8621533430327619, 0.8614098573239889, 0.8359596350644931, 0.8554788188001933, 0.9018960854829994, 0.7543158617800949, 0.7696012292642702, 0.572834205156879, 0.5990495599749937, 0.6150168885281901, 0.8624590680600637, 0.7260367796672927, 0.8272760729505978, 0.695136974622162, 0.5538580299426284, 0.5946269418740916, 0.6785067124962526, 0.7523584492094832, 0.7693837074111681, 0.5739397336879551, 0.7507666807708038, 0.7476552508116505, 0.6621633043871679, 0.5870514217548126, 0.7245154455102129, 0.6243287064390354, 0.6618608527036168, 0.7996105602995166, 0.7536772584235113, 0.7574975528362435]
+from mcda_functions import analyze_locations
+import numpy as np
 
 # # Konfiguracja
 # Wspolrzedne
@@ -12,21 +11,145 @@ lon0 = 14.508
 lon1 = 14.587
 # Odstep miedzy punktami
 distance_per_point = 500
-# Kryteria
 
-# Typy
+BIKE_CRITERIA = [
+    {
+        "name": "Ilość komunikacji miejskiej",
+        "id": "count_pub_trans",
+        "method": "count",
+        "api_params": ("public_transport", "platform"),
+        "type": 1,
+    },
+    {
+        "name": "Ilość obszarów uniwersyteckich",
+        "id": "count_uni_area",
+        "method": "count",
+        "api_params": ("amenity", "university"),
+        "type": 1,
+    },
+    {
+        "name": "Ścieżki rowerowe",
+        "id": "bi_path",
+        "method": "distance",
+        "api_params": ("highway", "cycleway"),
+        "type": -1,
+    },
+    {
+        "name": "Ilość supermarketów",
+        "id": "supermarket",
+        "method": "count",
+        "api_params": ("shop", "supermarket"),
+        "type": 1,
+    },
+    {
+        "name": "Ilość parków w okolicy",
+        "id": "recreation_park_count",
+        "method": "count",
+        "api_params": ("leisure", "park"),
+        "type": 1,
+    },
+    {
+        "name": "Ilość biur/miejsc pracy",
+        "id": "office_count",
+        "method": "count",
+        "api_params": ("office", "yes"),
+        "type": 1,
+    },
+    {
+        "name": "Ilość restauracji",
+        "id": "restaurant_count",
+        "method": "count",
+        "api_params": ("amenity", "restaurant"),
+        "type": 1,
+    },
+    {
+        "name": "Ilość fast foodów",
+        "id": "fast_food_count",
+        "method": "count",
+        "api_params": ("amenity", "fast_food"),
+        "type": 1,
+    },
+    {
+        "name": "Ilość atrakcji turystycznych",
+        "id": "tourism_attraction_count",
+        "method": "count",
+        "api_params": ("tourism", "attraction"),
+        "type": 1,
+    },
+    {
+        "name": "Gęstość zabudowy mieszkaniowej",
+        "id": "residential_building_count",
+        "method": "count",
+        "api_params": ("building", "residential"),
+        "type": 1,
+    },
+]
+
+# Punkty w Szczecinie
+BIKE_POINTS = [
+    (53.43296129639522, 14.547968868949667),  # Plac Grunwaldzki
+    (53.43209966711944, 14.555278766434393),  # Pazim/Galaxy
+    (53.44771696811074, 14.49176316404754),   # WI
+    (53.42733614288465, 14.485328899575466),  # Ster
+    (53.42777787163157, 14.53133731478859),   # Turzyn
+    (53.40365605376617, 14.499642240087212),  # Cukrowa Uniwerek
+    (53.44247491754028, 14.567364906386535),  # Fabryka Wody + Mieszkania
+    (53.427400712136276, 14.537395453240668), # Kościuszki
+    (53.422574981749726, 14.559356706858086), # Wyszyńskiego
+    (53.42451975173007, 14.550517853490351),  # Brama Portowa
+]
+
+BIKE_POINTS_NAMES = [
+    "Plac Grunwaldzki", "Pazim/Galaxy", "WI", "Ster", "Turzyn",
+    "Cukrowa Uniwerek", "Fabryka Wody + Mieszkania", "Kościuszki",
+    "Wyszyńskiego", "Brama Portowa"
+]
+
+# Konfiguracja dla rowerów
+POI_INDICES = [3, 5, 6, 7, 8]  # supermarkety, biura, restauracje, fast food, atrakcje
+CRITERIA_TYPES = np.array([1, 1, -1, 1, 1])  # po mergowaniu POI
 
 
 
 def main():
+    # use_grid = False
+
+    latitudes, longitudes, points = generate_points(lat0, lat1, lon0, lon1, distance_per_point)
+    analysis_points = [(float(point[1]), float(point[0])) for point in points]
+    analysis_names = [f"Point_{i}" for i in range(len(analysis_points))]
+
+    # if use_grid:
+    #     latitudes, longitudes, points = generate_points(lat0, lat1, lon0, lon1, distance_per_point)
+    #     analysis_points = [(float(point[0]), float(point[1])) for point in points]
+    #     analysis_names = [f"Point_{i}" for i in range(len(analysis_points))]
+    # else:
+    #     analysis_points = BIKE_POINTS
+    #     analysis_names = BIKE_POINTS_NAMES
+
 
     # Generujemy zbiór punktow rozmieszczonych o zadana wartosc w metrach, zbiór szerokosci oraz wysokosci geograficznych
-    latitudes, longitudes, points = generate_points(lat0, lat1, lon0, lon1, distance_per_point)
-    # score = generate_score() # TODO
-    score = spotis_base[:len(points)]
+    # latitudes, longitudes, points = generate_points(lat0, lat1, lon0, lon1, distance_per_point)
+    # score = spotis_base[:len(points)]
+
+    preferences, ranking = analyze_locations(
+        points=analysis_points,
+        points_names=analysis_names,
+        criteria=BIKE_CRITERIA,
+        criteria_types=CRITERIA_TYPES,
+        weights_file="as_rancom.csv",
+        poi_indices=POI_INDICES,
+        output_prefix="bike_analysis",
+        export_results=False,
+        chunk_size=10,
+        radius=500,
+        delay=1.0,
+        chunk_delay=5.0
+    )
+
+    preferences = preferences.tolist()
     
     # generujemy interpolowany grid poszerzony o zadany interpolate_factor (domyslnie 10)
-    i_mesh_longitude, i_mesh_latitude, grid = interpolate(points, score, latitudes, longitudes)
+    i_mesh_longitude, i_mesh_latitude, grid = interpolate(points, preferences, latitudes, longitudes)
 
     # plotowanie heatmapy 
     plot_heatmap(grid, i_mesh_longitude, i_mesh_latitude, "Heatmap")
@@ -35,7 +158,7 @@ def main():
     plot_points(points, (lat0, lat1), (lon0, lon1), "Grid Points")
 
     # podsumowanie wynikow i analizy  
-    summary(latitudes,longitudes, lat0,lat1,lon0,lon1,points,score)
+    summary(latitudes,longitudes, lat0,lat1,lon0,lon1,points,preferences)
 
 if __name__ == "__main__":
     main()

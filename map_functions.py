@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.io.img_tiles as cimgt
+from geopy.distance import geodesic
 
 def plot_heatmap(grid, lon_i_m, lat_i_m, title, alpha=0.6, osm_zoom=14, equal_degree_aspect=True):
     """
@@ -100,20 +101,22 @@ def generate_points(lat0, lat1, lon0, lon1, distance_per_point):
     Zwraca: siatkę szerokości, długości oraz tablicę punktów (lon, lat).
     """
     # Przelicz stopnie na metry (przybliżenie)
-    # 1 stopień szerokości ≈ 111 km
-    # 1 stopień długości ≈ 111 km * cos(szerokość)
-    avg_lat = (lat0 + lat1) / 2
-    
-    width_in_meters = np.abs(lat1 - lat0) * 111000  # metry na stopień szerokości
-    height_in_meters = np.abs(lon1 - lon0) * 111000 * np.cos(np.radians(avg_lat))  # metry na stopień długości
+    width_in_meters = geodesic((lat0, lon0), (lat1, lon0)).meters
 
+    # Height (longitude difference) - distance between two points with same latitude
+    # Use average latitude for more accurate calculation
+    avg_lat = (lat0 + lat1) / 2
+    height_in_meters = geodesic((avg_lat, lon0), (avg_lat, lon1)).meters
+
+    # Calculate number of points based on desired distance per point
     w_points = int(width_in_meters / distance_per_point)
     h_points = int(height_in_meters / distance_per_point)
 
-    # Minimum 2 punkty w każdym kierunku
+    # Minimum 2 points in each direction
     w_points = max(2, w_points)
     h_points = max(2, h_points)
 
+    # Create the grid
     lat_grid = np.linspace(lat0, lat1, w_points)
     lon_grid = np.linspace(lon0, lon1, h_points)
     lon_mesh, lat_mesh = np.meshgrid(lon_grid, lat_grid)
